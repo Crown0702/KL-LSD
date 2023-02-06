@@ -1,0 +1,142 @@
+def KL(G):
+    G.remove_edges_from(nx.selfloop_edges(G))
+    k_shell=nx.core_number(G)
+    maxKshell=max(k_shell.values())
+    minKshell=min(k_shell.values())
+    Hv = {}
+    Sv = {}
+    #neighbor_probability={}
+    d_max=max(dict(G.degree()).values())
+    print(d_max)
+    node_entropy = {}
+    
+    # calculate the H(v) of each node
+    for node in nx.nodes(G):
+        p_real_probability = []
+        node_entropy[node] = 0
+        sum=0
+        Hv_value=0    
+        
+        # calculater the p(x)
+        for nbr in nx.neighbors(G, node): 
+            sum += G.degree(nbr)
+            if nbr==node:
+                print(nbr)
+           # print(sum)
+        for nbr in nx.neighbors(G, node): #(i1,i2,i3..in)
+            neighbor_probability= G.degree(nbr) / sum
+            p_real_probability.append((nbr, neighbor_probability))  
+        neighbor_list = [i[0] for i in p_real_probability]
+        
+        
+        #remove  node
+        REMOVE_G = G.copy(node)
+        #print(G.number_of_nodes())
+        REMOVE_G.remove_node(node)
+        #print(REMOVE_G.number_of_nodes())
+        # calculate the q(x) of each neighbor node
+        for nbr in nx.neighbors(G, node):  #(i1,i2,i3..in)
+            q_matching_probability = []
+            Uneighbor_degree=0
+            for i in neighbor_list: #遍历每一个i的邻居节点(i1,i2,i3..in)
+               # print(i)
+                shortpath=0 
+                nbr_neighbor=set(nx.neighbors(G,nbr))
+                nbr_neighbor.add(nbr)
+                try:
+                    shortpath=nx.shortest_path_length(REMOVE_G,source=nbr,target=i)
+                    if i==nbr:
+                        shortpath=1
+                except:
+                    shortpath=2
+                #print(shortpath)
+               # if i in nbr_neighbor:
+                   #Uneighbor_degree += shortpath*REMOVE_G.degree(i)
+                   #shortestpath=1
+                #else:  #shortestpath=2 ,需要经过node才能实现数据传输
+                   #print(i)
+                Uneighbor_degree += math.sqrt((1/shortpath))*REMOVE_G.degree(i)
+                #print(node,nbr,i,REMOVE_G.degree(i),G.degree(i),Uneighbor_degree)
+                #print(nbr)
+               # print(i)
+                #print(Uneighbor_degree)
+                #print(REMOVE_G.degree(i))
+                #print('hello')
+            
+            #print(Uneighbor_degree)
+           
+            # calculate the q(x) of each matching probability
+            for i in neighbor_list: #u1,u2,un
+                if REMOVE_G.degree(i) ==0:
+                   Uneighbor_probability=0
+                else:
+                    try:
+                        shortpath=nx.shortest_path_length(REMOVE_G,source=nbr,target=i)
+                        if i==nbr :
+                            shortpath=1
+                            #Uneighbor_probability=shortpath*REMOVE_G.degree(i)/Uneighbor_degree
+                    except:
+                        shortpath=2
+                    #else:
+                   #print(i)
+                    Uneighbor_probability= math.sqrt((1/shortpath))*REMOVE_G.degree(i)/Uneighbor_degree
+                    #print(node,nbr,i,REMOVE_G.degree(i),G.degree(i),Uneighbor_degree,Uneighbor_probability)
+                    #print('hellohello')
+                        
+                q_matching_probability.append((i, Uneighbor_probability)) 
+            
+             
+                                  
+            # calculate the KL_value
+            q = ([i[1] for i in q_matching_probability]) 
+            p= ([i[1] for i in p_real_probability])
+           
+           # print(q)
+            #print("hello")
+            kl_value=0
+            for i in range(len(p)):
+                if q[i]==0:
+                   #print("hello")
+                   #print(nbr)
+                   #print(q)
+                   #q[i]=0.1
+                   kl_value += 0
+                   #kl_value += p[i]*(math.log10(p[i]))-p[i]*(math.log10(q[i]))
+                else:
+                   # print(i)
+                   kl_value += p[i]*(math.log10(p[i]))-p[i]*(math.log10(q[i]))
+                   #print('hello',kl_value,node,nbr,i)
+            
+            # calculate the kl_value of all neighbor node
+            #print(q[i])
+            #print(node,p)
+            Hv_value += (kl_value)*k_shell[nbr]#len(set(nx.neighbors(G,nbr)))
+            #print('hello',Hv_value,kl_value,node,nbr,k_shell[nbr])
+            
+        #calculate the Hv value of each node    
+        #print(Hv_value)
+        Hv[node] = Hv_value+G.degree(node)#/d_max
+        if Hv[node]<0:
+           Hv[node]=0
+            #print('hello')
+        #print(Hv[node],G.degree(node),node)
+    
+    #print(k_shell)
+        
+      # calculate the LSD value of each node   
+    rank=[]
+    for node in nx.nodes(G):
+        sum_sv = 0
+        for j in nx.neighbors(G, node):
+            sum_sv += Hv[j]
+            #print(node,j,sum_sv)
+        #Sv[node] = Hv[node]
+        if sum_sv==0:
+            Sv[node] = Hv[node]
+        else:
+            Sv[node] = Hv[node]+math.sqrt(sum_sv)#k_shell[node]/maxKshell
+        rank.append((node, Sv[node]))
+        #print(node,'value is:',Sv[node], Hv[node],sum_sv,math.sqrt(sum_sv))
+        #print(node,'kshell value is:',k_shell[node])
+    #print(rank)
+    return rank
